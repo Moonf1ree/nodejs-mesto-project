@@ -1,30 +1,36 @@
-import express, { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
-import usersRouter from './routes/users';
-import cardsRouter from './routes/cards';
+import express, { NextFunction, Request, Response } from "express";
+import { errors } from "celebrate";
+import mongoose from "mongoose";
+import usersRouter from "./routes/users";
+import cardsRouter from "./routes/cards";
+import { createUser, login } from "./controllers/users";
+import { requestLogger, errorLogger } from "./middlewares/logger";
+import auth from "./middlewares/auth";
+import errorHandler from "./middlewares/error-handler";
+import { signInValidation, signUpValidation } from "./middlewares/validation";
+import NotFoundError from "./errors/not-found-error";
 
 const { PORT = 3000 } = process.env;
 const app = express();
 
 app.use(express.json());
+app.use(requestLogger);
 
-mongoose.connect('mongodb://localhost:27017/mestodb');
+mongoose.connect("mongodb://localhost:27017/mestodb");
 
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  req.user = {
-    _id: '5d8b8592978f8bd833ca8133',
-  };
+app.post("/signin", signInValidation, login);
+app.post("/signup", signUpValidation, createUser);
 
-  next();
+app.use(auth);
+app.use("/users", usersRouter);
+app.use("/cards", cardsRouter);
+
+app.use((_req: Request, _res: Response, next: NextFunction) => {
+  next(new NotFoundError("Запрашиваемый ресурс не найден"));
 });
 
-app.use('/users', usersRouter);
-app.use('/cards', cardsRouter);
+app.use(errorLogger);
+app.use(errors());
+app.use(errorHandler);
 
-app.use((_req: Request, res: Response) => {
-  res.status(404).send({ message: 'Запрашиваемый ресурс не найден' });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
-});
+app.listen(PORT);

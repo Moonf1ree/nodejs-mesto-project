@@ -1,52 +1,57 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Card from '../models/card';
+import BadRequestError from '../errors/bad-request-error';
+import NotFoundError from '../errors/not-found-error';
+import ForbiddenError from '../errors/forbidden-error';
 
-const BAD_REQUEST = 400;
-const NOT_FOUND = 404;
-const SERVER_ERROR = 500;
-
-const getCards = async (_req: Request, res: Response) => {
+const getCards = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const cards = await Card.find({});
-    res.send(cards);
+    return res.send(cards);
   } catch (err) {
-    res.status(SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(err);
   }
 };
 
-const createCard = async (req: Request, res: Response) => {
+const createCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, link } = req.body;
     const card = await Card.create({ name, link, owner: req.user._id });
     return res.status(201).send(card);
   } catch (err) {
     if (err instanceof Error && err.name === 'ValidationError') {
-      return res.status(BAD_REQUEST).send({ message: 'Переданы некорректные данные карточки' });
+      return next(new BadRequestError('Переданы некорректные данные карточки'));
     }
 
-    return res.status(SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(err);
   }
 };
 
-const deleteCard = async (req: Request, res: Response) => {
+const deleteCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const card = await Card.findByIdAndDelete(req.params.cardId);
+    const card = await Card.findById(req.params.cardId);
 
     if (!card) {
-      return res.status(NOT_FOUND).send({ message: 'Карточка по указанному id не найдена' });
+      return next(new NotFoundError('Карточка по указанному id не найдена'));
     }
+
+    if (card.owner.toString() !== req.user._id) {
+      return next(new ForbiddenError('Нельзя удалить чужую карточку'));
+    }
+
+    await card.deleteOne();
 
     return res.send(card);
   } catch (err) {
     if (err instanceof Error && err.name === 'CastError') {
-      return res.status(BAD_REQUEST).send({ message: 'Передан некорректный id карточки' });
+      return next(new BadRequestError('Передан некорректный id карточки'));
     }
 
-    return res.status(SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(err);
   }
 };
 
-const likeCard = async (req: Request, res: Response) => {
+const likeCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const card = await Card.findByIdAndUpdate(
       req.params.cardId,
@@ -55,20 +60,20 @@ const likeCard = async (req: Request, res: Response) => {
     );
 
     if (!card) {
-      return res.status(NOT_FOUND).send({ message: 'Карточка по указанному id не найдена' });
+      return next(new NotFoundError('Карточка по указанному id не найдена'));
     }
 
     return res.send(card);
   } catch (err) {
     if (err instanceof Error && err.name === 'CastError') {
-      return res.status(BAD_REQUEST).send({ message: 'Передан некорректный id карточки' });
+      return next(new BadRequestError('Передан некорректный id карточки'));
     }
 
-    return res.status(SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(err);
   }
 };
 
-const dislikeCard = async (req: Request, res: Response) => {
+const dislikeCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const card = await Card.findByIdAndUpdate(
       req.params.cardId,
@@ -77,16 +82,16 @@ const dislikeCard = async (req: Request, res: Response) => {
     );
 
     if (!card) {
-      return res.status(NOT_FOUND).send({ message: 'Карточка по указанному id не найдена' });
+      return next(new NotFoundError('Карточка по указанному id не найдена'));
     }
 
     return res.send(card);
   } catch (err) {
     if (err instanceof Error && err.name === 'CastError') {
-      return res.status(BAD_REQUEST).send({ message: 'Передан некорректный id карточки' });
+      return next(new BadRequestError('Передан некорректный id карточки'));
     }
 
-    return res.status(SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(err);
   }
 };
 
