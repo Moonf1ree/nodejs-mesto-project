@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/user';
-import { JWT_SECRET } from '../constants';
+import { JWT_SECRET, STATUS_CODES } from '../constants';
 import BadRequestError from '../errors/bad-request-error';
 import NotFoundError from '../errors/not-found-error';
 import ConflictError from '../errors/conflict-error';
@@ -60,7 +60,7 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
       password: passwordHash,
     });
 
-    return res.status(201).send({
+    return res.status(STATUS_CODES.CREATED).send({
       _id: createdUser._id,
       name: createdUser.name,
       about: createdUser.about,

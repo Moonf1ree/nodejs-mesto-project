@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import Card from '../models/card';
+import { STATUS_CODES } from '../constants';
 import BadRequestError from '../errors/bad-request-error';
 import NotFoundError from '../errors/not-found-error';
 import ForbiddenError from '../errors/forbidden-error';
@@ -17,7 +18,7 @@ const createCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, link } = req.body;
     const card = await Card.create({ name, link, owner: req.user._id });
-    return res.status(201).send(card);
+    return res.status(STATUS_CODES.CREATED).send(card);
   } catch (err) {
     if (err instanceof Error && err.name === 'ValidationError') {
       return next(new BadRequestError('Переданы некорректные данные карточки'));
